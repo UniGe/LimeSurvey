@@ -1,3 +1,11 @@
+<?php
+
+/** @var QuestionAdministrationController $this */
+/** @var Question $question */
+/** @var array $advancedSettings */
+
+?>
+
 <div class="col-12 scope-apply-base-style scope-min-height">
     <div class="container-fluid" id="advanced-options-container">
         <div class="row scoped-tablist-container">
@@ -27,6 +35,18 @@
                     </a>
                 </li>
                 <?php endif; ?>
+                <?php if ($question->questionType->answerscales > 0): ?>
+                    <li role="presentation">
+                        <a
+                            href="#defaultanswers"
+                            aria-controls="defaultanswers"
+                            role="tab"
+                            data-toggle="tab"
+                        >
+                            <?= gT('Default Answers'); ?>
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <?php foreach ($advancedSettings as $category => $_) : ?>
                     <?php if ($category === 'Display'): ?>
                         <li role="presentation" class="active">
@@ -53,12 +73,12 @@
                         <?= Yii::app()->twigRenderer->renderViewFromFile(
                             '/application/views/questionAdministration/subquestions.twig',
                             [
-                                'activated'    => $oSurvey->active !== 'N',
+                                'activated'    => $question->survey->active !== 'N',
                                 'scalecount'   => 1,
                                 'subquestions' => $question->subquestions ? $question->subquestions : [$question->getEmptySubquestion()],
                                 'question'     => $question,
-                                'allLanguages' => $oSurvey->allLanguages,
-                                'language'     => $oSurvey->language,
+                                'allLanguages' => $question->survey->allLanguages,
+                                'language'     => $question->survey->language,
                                 'hasLabelSetPermission' => Permission::model()->hasGlobalPermission('labelsets','create'),
                             ],
                             true
@@ -72,17 +92,33 @@
                         <?= Yii::app()->twigRenderer->renderViewFromFile(
                             '/application/views/questionAdministration/answerOptions.twig',
                             [
-                                'activated'  => $oSurvey->active !== 'N',
+                                'activated'  => $question->survey->active !== 'N',
                                 'oldCode'    => true,
                                 'scalecount' => 1,
                                 'answers'    => $question->answers ? $question->answers : [$question->getEmptyAnswerOption()],
                                 'question'     => $question,
-                                'allLanguages' => $oSurvey->allLanguages,
-                                'language'   => $oSurvey->language,
+                                'allLanguages' => $question->survey->allLanguages,
+                                'language'   => $question->survey->language,
                                 'hasLabelSetPermission' => Permission::model()->hasGlobalPermission('labelsets','create'),
                             ],
                             true
                         ); ?>
+                    </div>
+                    <div role="tabpanel" class="tab-pane" id="defaultanswers">
+                        <!-- TODO: Add path in controller. -->
+                        <?php
+                        //should only be rendered when question already exists ... (like in master before)
+                            Yii::app()->getController()->renderPartial('editdefaultvalues', [
+                                'oSurvey' => $question->survey,
+                                'qtproperties' => QuestionType::modelsAttributes(),
+                                'questionrow' => $question->attributes,
+                                'question' => $question,
+                                'hasUpdatePermission' => Permission::model()->hasSurveyPermission(
+                                    $question->sid,
+                                    'surveycontent',
+                                    'update') ? '' : 'disabled="disabled" readonly="readonly"'
+                            ]);
+                        ?>
                     </div>
                 <?php endif; ?>
                 <?php foreach ($advancedSettings as $category => $settings): ?>

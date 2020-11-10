@@ -1,13 +1,16 @@
 <?php
 /**
  * Send email invitations
- * @var AdminController $this
+ *
+ * @var QuestionAdministrationController $this
  * @var Survey $oSurvey
+ * @var Question $question
  * @var array $qtproperties
  * @var array $questionrow
- * @var array $langopts
  * @var string $hasUpdatePermission
  */
+
+$langopts = QuestionAdministrationController::getDefaultValues($oSurvey->sid, $question->gid, $question->qid);
 
 ?>
     <div id='edit-question-body' class='side-body <?php echo getSideBodyClass(false); ?>'>
@@ -174,9 +177,9 @@
                     <?php endforeach; ?>
                 </div>
                 <input type='hidden' id='action' name='action' value='updatedefaultvalues'/>
-                <input type='hidden' id='sid' name='sid' value='<?php echo $surveyid ?>'/>
-                <input type='hidden' id='gid' name='gid' value='<?php echo $gid ?>'/>
-                <input type='hidden' id='qid' name='qid' value='<?php echo $qid ?>'/>
+                <input type='hidden' id='sid' name='sid' value='<?php echo $question->sid ?>'/>
+                <input type='hidden' id='gid' name='gid' value='<?php echo $question->gid ?>'/>
+                <input type='hidden' id='qid' name='qid' value='<?php echo $question->qid ?>'/>
                 <p><input class="hidden" type='submit' value='<?php eT('Save') ?>'/></p>
                 <?php echo CHtml::endForm(); ?>
             </div>
