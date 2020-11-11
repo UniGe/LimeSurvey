@@ -118,9 +118,13 @@ class database extends Survey_Common_Action
         $this->oFixCKeditor->fixCKeditor = true;
         $this->oFixCKeditor->xssfilter = false;
 
+        /*
+         * Default values update/save is moved to advanced settings tab and this function is called via
+         * action actionSaveQuestionData in QuestionAdministrationController
+         *
         if ($sAction == "updatedefaultvalues" && Permission::model()->hasSurveyPermission($this->iSurveyID, 'surveycontent', 'update')) {
             $this->actionUpdateDefaultValues($this->iSurveyID);
-        }
+        }*/
 //        if ($sAction == "updateansweroptions" && Permission::model()->hasSurveyPermission($this->iSurveyID, 'surveycontent', 'update')) {
 //            $this->actionUpdateAnswerOptions($this->iSurveyID);
 //        }
@@ -149,6 +153,8 @@ class database extends Survey_Common_Action
     /**
      * This is a convenience function to update/delete answer default values. If the given
      * $defaultvalue is empty then the entry is removed from table defaultvalues
+     *
+     * @deprecated is now in QuestionAdministrationController
      *
      * @param integer $qid   Question ID
      * @param integer $scale_id  Scale ID
@@ -213,6 +219,9 @@ class database extends Survey_Common_Action
 
     /**
      * action to do when update default value
+     *
+     * @deprecated this function is now in QuestionAdministrationController ...
+     *
      * @param integer $iSurveyID
      * @return void (redirect)
      */

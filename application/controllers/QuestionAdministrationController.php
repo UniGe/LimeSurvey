@@ -381,6 +381,11 @@ class QuestionAdministrationController extends LSBaseController
                 // TODO: Update subquestions.
                 // TODO: Update answer options.
             }
+
+            //save default answer values
+            if ($question->questionType->hasdefaultvalues){
+                $this->updateDefaultValues($iSurveyId, $question->sid);
+            }
             $transaction->commit();
 
             // All done, redirect to edit form.
@@ -623,6 +628,180 @@ class QuestionAdministrationController extends LSBaseController
         }
         header('Content-Type: application/json');
         echo json_encode($html);
+    }
+
+    /**
+     * update/save default values
+     *
+     * @param integer $iSurveyID
+     * @return void (redirect)
+     */
+    private function updateDefaultValues($iSurveyID, $questionId)
+    {
+        $oSurvey = Survey::model()->findByPk($iSurveyID);
+        $aSurveyLanguages = $oSurvey->allLanguages;
+        $sBaseLanguage = $oSurvey->language;
+
+        Question::model()->updateAll(array('same_default'=> Yii::app()->request->getPost('samedefault') ? 1 : 0),
+            'sid=:sid ANd qid=:qid', array(':sid'=>$iSurveyID, ':qid'=>$questionId));
+
+        $arQuestion = Question::model()->findByAttributes(array('qid'=>$questionId));
+        $sQuestionType = $arQuestion['type'];
+
+        $aQuestionTypeList = Question::typeList();
+        if ($aQuestionTypeList[$sQuestionType]['answerscales'] > 0 && $aQuestionTypeList[$sQuestionType]['subquestions'] == 0) {
+            for ($iScaleID = 0; $iScaleID < $aQuestionTypeList[$sQuestionType]['answerscales']; $iScaleID++) {
+                foreach ($aSurveyLanguages as $sLanguage) {
+                    if (!is_null(Yii::app()->request->getPost('defaultanswerscale_'.$iScaleID.'_'.$sLanguage))) {
+                        $this->_updateDefaultValues($questionId, 0, $iScaleID, '', $sLanguage,
+                            Yii::app()->request->getPost('defaultanswerscale_'.$iScaleID.'_'.$sLanguage));
+                    }
+                    if (!is_null(Yii::app()->request->getPost('other_'.$iScaleID.'_'.$sLanguage))) {
+                        $this->_updateDefaultValues($questionId, 0, $iScaleID, 'other',
+                            $sLanguage, Yii::app()->request->getPost('other_'.$iScaleID.'_'.$sLanguage));
+                    }
+                }
+            }
+        }
+        if ($aQuestionTypeList[$sQuestionType]['subquestions'] > 0) {
+            foreach ($aSurveyLanguages as $sLanguage) {
+                $arQuestions = Question::model()->with('questionl10ns',
+                    array('condition' => 'language = ' . $sLanguage))->findAllByAttributes(array(
+                        'sid'=>$iSurveyID,
+                        'gid'=>$arQuestion->gid,
+                        'parent_qid'=>$questionId,
+                        'scale_id'=>0
+                ));
+
+                for ($iScaleID = 0; $iScaleID < $aQuestionTypeList[$sQuestionType]['subquestions']; $iScaleID++) {
+                    foreach ($arQuestions as $aSubquestionrow) {
+                        $postParamLanguage = Yii::app()->request->getPost('defaultanswerscale_'.$iScaleID.'_'.$sLanguage.'_'.$aSubquestionrow['qid']);
+                        if (!is_null($postParamLanguage)) {
+                            $this->_updateDefaultValues($questionId, $aSubquestionrow['qid'],
+                                $iScaleID,
+                                '',
+                                $sLanguage,
+                                $postParamLanguage
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        if ($aQuestionTypeList[$sQuestionType]['answerscales'] == 0 && $aQuestionTypeList[$sQuestionType]['subquestions'] == 0) {
+            foreach ($aSurveyLanguages as $sLanguage) {
+                // Qick and dirty insert for yes/no defaul value
+                // write the the selectbox option, or if "EM" is slected, this value to table
+                if ($sQuestionType == 'Y') {
+                    /// value for all langs
+                    if (Yii::app()->request->getPost('samedefault') == 1) {
+                        $sLanguage = $aSurveyLanguages[0]; // turn
+                    }
+
+                    if (Yii::app()->request->getPost('defaultanswerscale_0_'.$sLanguage) == 'EM') {
+                        // Case EM, write expression to database
+                        $postParamLanguage = Yii::app()->request->getPost('defaultanswerscale_0_'.$sLanguage.'_EM');
+                    } else {
+                        $postParamLanguage = Yii::app()->request->getPost('defaultanswerscale_0_'.$sLanguage);
+                    }
+                    $this->_updateDefaultValues(
+                        $questionId,
+                        0,
+                        0,
+                        '',
+                        $sLanguage,
+                        $postParamLanguage
+                    );
+                    ///// end yes/no
+                } else {
+                    if (!is_null(Yii::app()->request->getPost('defaultanswerscale_0_'.$sLanguage.'_0'))) {
+                        $this->_updateDefaultValues(
+                            $questionId,
+                            0,
+                            0,
+                            '',
+                            $sLanguage,
+                            Yii::app()->request->getPost('defaultanswerscale_0_'.$sLanguage.'_0'));
+                    }
+                }
+            }
+        }
+        Yii::app()->session['flashmessage'] = gT("Default value settings were successfully saved.");
+        //This is SUPER important! Recalculating the ExpressionScript Engine state!
+        LimeExpressionManager::SetDirtyFlag();
+
+        /*
+        if (Yii::app()->request->getPost('close-after-save') === 'true') {
+            $this->getController()->redirect(array('questionAdministration/view/surveyid/'.$iSurveyID.'/gid/'.$this->iQuestionGroupID.'/qid/'.$this->iQuestionID));
+        }
+        $this->getController()->redirect(['questionAdministration/editdefaultvalues/surveyid/'.$iSurveyID.'/gid/'.$this->iQuestionGroupID.'/qid/'.$this->iQuestionID]);
+        */
+    }
+
+
+    /**
+     * This is a convenience function to update/delete answer default values. If the given
+     * $defaultvalue is empty then the entry is removed from table defaultvalues
+     *
+     * @param integer $qid   Question ID
+     * @param integer $scale_id  Scale ID
+     * @param string $specialtype  Special type (i.e. for  'Other')
+     * @param string $language     Language (defaults are language specific)
+     * @param mixed $defaultvalue    The default value itself
+     */
+    public function _updateDefaultValues($qid, $sqid, $scale_id, $specialtype, $language, $defaultvalue)
+    {
+        $arDefaultValue = DefaultValue::model()
+            ->find(
+                'specialtype = :specialtype AND qid = :qid AND sqid = :sqid AND scale_id = :scale_id',
+                array(
+                    ':specialtype' => $specialtype,
+                    ':qid' => $qid,
+                    ':sqid' => $sqid,
+                    ':scale_id' => $scale_id,
+                )
+            );
+        $dvid = !empty($arDefaultValue->dvid) ? $arDefaultValue->dvid : null;
+
+        if ($defaultvalue == '') {
+            // Remove the default value if it is empty
+            if ($dvid !== null){
+                DefaultValueL10n::model()->deleteAllByAttributes(array('dvid'=>$dvid, 'language' => $language ));
+                $iRowCount = DefaultValueL10n::model()->countByAttributes(array('dvid' => $dvid));
+                if ($iRowCount == 0){
+                    DefaultValue::model()->deleteByPk($dvid);
+                }
+            }
+        } else {
+            if (is_null($dvid)) {
+                $data = array('qid'=>$qid, 'sqid'=>$sqid, 'scale_id'=>$scale_id, 'specialtype'=>$specialtype);
+                $oDefaultvalue = new DefaultValue();
+                $oDefaultvalue->attributes = $data;
+                $oDefaultvalue->specialtype = $specialtype;
+                $oDefaultvalue->save();
+                if (!empty($oDefaultvalue->dvid)){
+                    $dataL10n = array('dvid'=>$oDefaultvalue->dvid, 'language'=>$language, 'defaultvalue'=>$defaultvalue);
+                    $oDefaultvalueL10n = new DefaultValueL10n();
+                    $oDefaultvalueL10n->attributes = $dataL10n;
+                    $oDefaultvalueL10n->save();
+                }
+            } else {
+                if ($dvid !== null){
+                    $arDefaultValue->with('defaultvaluel10ns');
+                    $idL10n = !empty($arDefaultValue->defaultvaluel10ns) && array_key_exists($language, $arDefaultValue->defaultvaluel10ns) ? $arDefaultValue->defaultvaluel10ns[$language]->id : null;
+                    if ($idL10n !== null){
+                        DefaultValueL10n::model()->updateAll(array('defaultvalue'=>$defaultvalue), 'dvid = ' . $dvid . ' AND language = \'' . $language . '\'');
+                    } else {
+                        $dataL10n = array('dvid'=>$dvid, 'language'=>$language, 'defaultvalue'=>$defaultvalue);
+                        $oDefaultvalueL10n = new DefaultValueL10n();
+                        $oDefaultvalueL10n->attributes = $dataL10n;
+                        $oDefaultvalueL10n->save();
+                    }
+                }
+            }
+        }
+        $surveyid = $this->iSurveyID;
+        updateFieldArray();
     }
 
     /**
