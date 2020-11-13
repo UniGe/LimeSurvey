@@ -383,8 +383,8 @@ class QuestionAdministrationController extends LSBaseController
             }
 
             //save default answer values
-            if ($question->questionType->hasdefaultvalues){
-                $this->updateDefaultValues($iSurveyId, $question->sid);
+            if (($question->questionType->subquestions > 0) && $question->questionType->hasdefaultvalues) {
+                $this->updateDefaultValues($iSurveyId, $question->qid);
             }
             $transaction->commit();
 
@@ -675,7 +675,8 @@ class QuestionAdministrationController extends LSBaseController
 
                 for ($iScaleID = 0; $iScaleID < $aQuestionTypeList[$sQuestionType]['subquestions']; $iScaleID++) {
                     foreach ($arQuestions as $aSubquestionrow) {
-                        $postParamLanguage = Yii::app()->request->getPost('defaultanswerscale_'.$iScaleID.'_'.$sLanguage.'_'.$aSubquestionrow['qid']);
+                        $namePostParam = 'defaultanswerscale_'.$iScaleID.'_'.$sLanguage.'_'.$aSubquestionrow['qid'];
+                        $postParamLanguage = Yii::app()->request->getPost($namePostParam);
                         if (!is_null($postParamLanguage)) {
                             $this->_updateDefaultValues($questionId, $aSubquestionrow['qid'],
                                 $iScaleID,
@@ -726,7 +727,6 @@ class QuestionAdministrationController extends LSBaseController
                 }
             }
         }
-        Yii::app()->session['flashmessage'] = gT("Default value settings were successfully saved.");
         //This is SUPER important! Recalculating the ExpressionScript Engine state!
         LimeExpressionManager::SetDirtyFlag();
 
@@ -800,7 +800,6 @@ class QuestionAdministrationController extends LSBaseController
                 }
             }
         }
-        $surveyid = $this->iSurveyID;
         updateFieldArray();
     }
 

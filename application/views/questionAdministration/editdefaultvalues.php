@@ -19,7 +19,7 @@ $langopts = QuestionAdministrationController::getDefaultValues($oSurvey->sid, $q
         </h3>
         <div class="row">
             <div class="col-lg-8 content-right">
-                <?php echo CHtml::form(["admin/database/index"], 'post', ['class' => '', 'id' => 'frmdefaultvalues', 'name' => 'frmdefaultvalues']); ?>
+                <?php // echo CHtml::form(["admin/database/index"], 'post', ['class' => '', 'id' => 'frmdefaultvalues', 'name' => 'frmdefaultvalues']); ?>
                 <ul class="nav nav-tabs">
                     <?php foreach ($oSurvey->allLanguages as $i => $language) : ?>
                         <li role="presentation" <?php echo $i == 0 ? 'class="active"' : ''; ?>>
