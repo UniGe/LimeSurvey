@@ -383,7 +383,7 @@ class QuestionAdministrationController extends LSBaseController
             }
 
             //save default answer values
-            if (($question->questionType->subquestions > 0) && $question->questionType->hasdefaultvalues) {
+            if ($question->qid !== null && $question->qid !== 0 && $question->questionType->hasdefaultvalues>0) {
                 $this->updateDefaultValues($iSurveyId, $question->qid);
             }
             $transaction->commit();
@@ -715,14 +715,16 @@ class QuestionAdministrationController extends LSBaseController
                     );
                     ///// end yes/no
                 } else {
-                    if (!is_null(Yii::app()->request->getPost('defaultanswerscale_0_'.$sLanguage.'_0'))) {
+                    $postParamLanguage = Yii::app()->request->getPost('defaultanswerscale_0_'.$sLanguage.'_0');
+                    if (!is_null($postParamLanguage)) {
                         $this->_updateDefaultValues(
                             $questionId,
                             0,
                             0,
                             '',
                             $sLanguage,
-                            Yii::app()->request->getPost('defaultanswerscale_0_'.$sLanguage.'_0'));
+                            $postParamLanguage
+                        );
                     }
                 }
             }

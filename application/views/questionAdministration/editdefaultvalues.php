@@ -155,8 +155,11 @@ $langopts = QuestionAdministrationController::getDefaultValues($oSurvey->sid, $q
                                             <?php eT("Default value:") ?>
                                         </label>
                                         <div class="col-sm-12">
-                                            <textarea <?php echo $hasUpdatePermission; ?> cols='50' name='defaultanswerscale_<?php echo "0_{$language}_0" ?>'
-                                                                                          id='defaultanswerscale_<?php echo "0_{$language}_0" ?>'>test</textarea>
+                                            <textarea <?php echo $hasUpdatePermission; ?>
+                                                cols='50'
+                                                name='defaultanswerscale_<?php echo "0_{$language}_0" ?>'
+                                                id='defaultanswerscale_<?php echo "0_{$language}_0" ?>'><?php echo $langopts[$language][$questionrow['type']][0]; ?>
+                                            </textarea>
                                         </div>
                                     </div>
                                 <?php endif;  //temporary solution?>

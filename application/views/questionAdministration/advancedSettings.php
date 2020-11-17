@@ -34,8 +34,12 @@
                         <?= gT('Answer options'); ?>
                     </a>
                 </li>
-                <?php endif; ?>
-                <?php if ($question->questionType->subquestions > 0): ?>
+                <?php endif;
+
+                if ($question->questionType->hasdefaultvalues > 0)
+                {
+                ?>
+
                     <li role="presentation">
                         <a
                             href="#defaultanswers"
@@ -46,8 +50,9 @@
                             <?= gT('Default Answers'); ?>
                         </a>
                     </li>
-                <?php endif; ?>
-                <?php foreach ($advancedSettings as $category => $_) : ?>
+                <?php
+                }
+                foreach ($advancedSettings as $category => $_) : ?>
                     <?php if ($category === 'Display'): ?>
                         <li role="presentation" class="active">
                     <?php else: ?>
@@ -105,14 +110,12 @@
                         ); ?>
                     </div>
                 <?php endif; ?>
-                <?php
-                if ($question->questionType->subquestions > 0) {
-                ?>
+                <?php if($question->questionType->hasdefaultvalues > 0){ ?>
                     <div role="tabpanel" class="tab-pane" id="defaultanswers">
                         <!-- TODO: Add path in controller. -->
                         <?php
                         //should only be rendered when question already exists ... (like in master before)
-                        if ($question->qid !== null && $question->qid !==0) {
+                        if ($question->qid !== null && $question->qid !==0 ) {
                             Yii::app()->getController()->renderPartial('editdefaultvalues', [
                                 'oSurvey'             => $question->survey,
                                 'qtproperties'        => QuestionType::modelsAttributes(),
@@ -121,7 +124,8 @@
                                 'hasUpdatePermission' => Permission::model()->hasSurveyPermission(
                                     $question->sid,
                                     'surveycontent',
-                                    'update') ? '' : 'disabled="disabled" readonly="readonly"'
+                                    'update'
+                                ) ? '' : 'disabled="disabled" readonly="readonly"'
                             ]);
                         }else{ //default values can only be added/saved if subquestions already exist ... ?>
                             <div id='edit-question-body' class='side-body <?php echo getSideBodyClass(false); ?>'>
@@ -129,14 +133,14 @@
                                     <?php eT('Edit default answer values') ?>
                                 </h3>
                                 <div class="row">
-                                      First create subquestions and save them. Afterwards you can edit default answers.
+                                      First create question/subquestions and save them. Afterwards you can edit default answers.
                                 </div>
                             </div>
                         <?php }
                         ?>
                     </div>
-                <?php }?>
-                <?php foreach ($advancedSettings as $category => $settings): ?>
+                <?php }
+                foreach ($advancedSettings as $category => $settings): ?>
                     <?php if ($category === 'Display'): ?>
                         <div role="tabpanel" class="tab-pane active" id="<?= $category; ?>">
                     <?php else: ?>
