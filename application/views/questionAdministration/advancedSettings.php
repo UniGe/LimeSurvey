@@ -109,8 +109,11 @@
                             true
                         ); ?>
                     </div>
-                <?php endif; ?>
-                <?php if($question->questionType->hasdefaultvalues > 0){ ?>
+                <?php endif;
+                    //try to get hasdefaultvalues from new implementation (xml files, table question_themes)
+                    $questionMetaDataSettings = (QuestionTheme::findQuestionMetaData($question->type))['settings'] ;
+                ?>
+                <?php if($questionMetaDataSettings->hasdefaultvalues == 1){ ?>
                     <div role="tabpanel" class="tab-pane" id="defaultanswers">
                         <!-- TODO: Add path in controller. -->
                         <?php
@@ -118,7 +121,8 @@
                         if ($question->qid !== null && $question->qid !==0 ) {
                             Yii::app()->getController()->renderPartial('editdefaultvalues', [
                                 'oSurvey'             => $question->survey,
-                                'qtproperties'        => QuestionType::modelsAttributes(),
+                                //'questionMetaData'        => QuestionType::modelsAttributes(),
+                                'questionMetaDataSettings'        => $questionMetaDataSettings,
                                 'questionrow'         => $question->attributes,
                                 'question'            => $question,
                                 'hasUpdatePermission' => Permission::model()->hasSurveyPermission(

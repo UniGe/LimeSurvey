@@ -5,7 +5,7 @@
  * @var QuestionAdministrationController $this
  * @var Survey $oSurvey
  * @var Question $question
- * @var array $qtproperties
+ * @var stdClass $questionMetaDataSettings (has the public attributes (e.g. $questionMetaData->hasdefaultvalues)
  * @var array $questionrow
  * @var string $hasUpdatePermission
  */
@@ -30,12 +30,12 @@ $langopts = QuestionAdministrationController::getDefaultValues($oSurvey->sid, $q
                 <div class="tab-content">
                     <?php foreach ($oSurvey->allLanguages as $i => $language) : ?>
                         <div id='df_<?php echo $language ?>' class="tab-pane fade in <?php echo $i == 0 ? 'active' : '' ?>">
-                            <?php if ($qtproperties[$questionrow['type']]['answerscales'] > 0) : ?>
-                                <?php for ($scale_id = 0; $scale_id < $qtproperties[$questionrow['type']]['answerscales']; $scale_id++) : ?>
+                            <?php if ((int)$questionMetaDataSettings->answerscales > 0) : ?>
+                                <?php for ($scale_id = 0; $scale_id < (int)$questionMetaDataSettings->answerscales; $scale_id++) : ?>
                                     <?php $opts = $langopts[$language][$questionrow['type']][$scale_id]; ?>
                                     <div class="form-group col-sm-12">
                                         <label class=" control-label" for='defaultanswerscale_<?php echo "{$scale_id}_{$language}" ?>'>
-                                            <?php $qtproperties[$questionrow['type']]['answerscales'] > 1
+                                            <?php (int)$questionMetaDataSettings->answerscales > 1
                                                 ? printf(gT('Default answer for scale %s:'), $scale_id)
                                                 : printf(gT('Default answer value:'), $scale_id) ?>
                                         </label>
@@ -71,10 +71,10 @@ $langopts = QuestionAdministrationController::getDefaultValues($oSurvey->sid, $q
                                 <?php endfor; ?>
                             <?php endif; ?>
                             <?php /* If there are subquestions and no answerscales */ ?>
-                            <?php if ($qtproperties[$questionrow['type']]['answerscales'] == 0 && $qtproperties[$questionrow['type']]['subquestions'] > 0) : ?>
-                                <?php for ($scale_id = 0; $scale_id < $qtproperties[$questionrow['type']]['subquestions']; $scale_id++) : ?>
+                            <?php if ((int)$questionMetaDataSettings->answerscales == 0 && (int)$questionMetaDataSettings->subquestions > 0) : ?>
+                                <?php for ($scale_id = 0; $scale_id < (int)$questionMetaDataSettings->subquestions; $scale_id++) : ?>
                                     <?php $opts = $langopts[$language][$questionrow['type']][$scale_id]; ?>
-                                    <?php if ($qtproperties[$questionrow['type']]['subquestions'] > 1) : ?>
+                                    <?php if ((int)$questionMetaDataSettings->subquestions > 1) : ?>
                                         <div class='header ui-widget-header'>
                                             <?php echo sprintf(gT('Default answer for scale %s:'), $scale_id) ?>
                                         </div>
@@ -128,7 +128,7 @@ $langopts = QuestionAdministrationController::getDefaultValues($oSurvey->sid, $q
                                     <?php endif; ?>
                                 <?php endfor; ?>
                             <?php endif; ?>
-                            <?php if ($qtproperties[$questionrow['type']]['answerscales'] == 0 && $qtproperties[$questionrow['type']]['subquestions'] == 0) : ?>
+                            <?php if ((int)$questionMetaDataSettings->answerscales == 0 && (int)$questionMetaDataSettings->subquestions == 0) : ?>
                                 <?php
                                 /*
                                 case 'D':
@@ -144,7 +144,6 @@ $langopts = QuestionAdministrationController::getDefaultValues($oSurvey->sid, $q
                                 $widgetOptions = [
                                     'language' => $language,
                                     'questionrow' => $questionrow,
-                                    'qtproperties' => $qtproperties,
                                     'langopts' => $langopts,
                                 ];
                                 $this->widget('application.views.admin.survey.Question.yesNo_defaultvalue_widget', ['widgetOptions' => $widgetOptions]);

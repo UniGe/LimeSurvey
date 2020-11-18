@@ -359,6 +359,8 @@ class QuestionAdministrationController extends LSBaseController
 
             // Clean subquestions and answer options before save.
             // NB: Still inside a database transaction.
+            $questionMetaData = QuestionTheme::findQuestionMetaData($question->type);
+            $hasdefaultvalues = ($questionMetaData['settings'])->hasdefaultvalues;
             if ($question->survey->active == 'N') {
                 $question->deleteAllAnswers();
                 $question->deleteAllSubquestions();
@@ -382,7 +384,7 @@ class QuestionAdministrationController extends LSBaseController
             }
 
             //save default answer values
-            if ($question->qid !== null && $question->qid !== 0 && $question->questionType->hasdefaultvalues>0) {
+            if ($question->qid !== null && $question->qid !== 0 && $hasdefaultvalues==1) {
                 $this->updateDefaultValues($iSurveyId, $question->qid);
             }
             $transaction->commit();
