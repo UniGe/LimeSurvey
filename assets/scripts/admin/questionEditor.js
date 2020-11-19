@@ -61,6 +61,14 @@ LS.questionEditor = (function () {
   /** @type {boolean} Used in ajaxcheckdup */
   let check = true;
 
+  /** @type {number} */
+  const sid = parseInt($('input[name=sid]').val());
+  if (isNaN(sid)) {
+    alert($('input[name=sid]').val());
+    alert('Internal error: No survey id found');
+    throw 'abort';
+  }
+
   /*:: declare function updateRowProperties(): void */
   /**
    * Rebind onclick events for subquestions and answer options?
@@ -616,10 +624,9 @@ LS.questionEditor = (function () {
    * @return {void}
    */
   function showLabelSetPreview(lid /*: number */) /*: void */ {
-    const surveyid = $('input[name=sid]').val();
     return $.ajax({
       url: languageJson.lsdetailurl,
-      data: {sid: surveyid, lid},
+      data: {sid, lid},
       cache: true,
       success(json /*: {results: Array<{label_name: string, labels: Array<{code: string, title: string}>}>, languages: {}} */) {
         if (json.languages === []) {
@@ -699,10 +706,9 @@ LS.questionEditor = (function () {
 
     $('#labelsets').select2();
     $('#labelsetpreview').html('');
-    const surveyid = $('input[name=sid]').val();
     $.ajax({
       url: languageJson.lspickurl,
-      data: { sid: surveyid, match: 1 },
+      data: { sid, match: 1 },
       success(jsonString) {
         if (jsonString.success !== true) {
           $('#labelsetpreview').html(`<p class='alert'>${languageJson.strNoLabelSet}</p>`);
@@ -735,7 +741,6 @@ LS.questionEditor = (function () {
    * @return {void}
    */
   function transferLabels(type /*: string */, source /*: string */) /*: void */ {
-    //const surveyid = $('input[name=sid]').val();
     //const languages = languageJson.langs.split(';');
     //const labels = [];
     const scaleId = $('#current_scale_id').val();
@@ -1019,13 +1024,13 @@ LS.questionEditor = (function () {
   }
 
   /**
-   * Used for "Save as label set"?
+   * Used for "Save as label set"
    *
    * @param {event} event
    * @return {void}
    */
-  function setLabel(event /*: Event */) /*: void */ {
-    console.log('setLabel');
+  function saveAsLabelSetOptionClick(event /*: Event */) /*: void */ {
+    console.log('saveAsLabelSetOptionClick');
     const target = event.target;
     if (!(target instanceof HTMLElement)) {
       alert('target is not an HTMLElement');
@@ -1039,46 +1044,54 @@ LS.questionEditor = (function () {
       throw 'Internal error: targetParent is not an instance of HTMLElement';
     }
 
+    // Cleanup any previous HTML.
+    const lasets = document.getElementById('lasets');
+    if (lasets) {
+        lasets.remove();
+    }
+    const laname = document.getElementById('laname');
+    if (laname) {
+        laname.remove();
+    }
+
     // TODO: Split each case into a function.
     switch (target.getAttribute('id')) {
+        // Save as new label set.
         case 'newlabel':
-            const lasets = document.getElementById('lasets');
-            if (lasets) {
-              lasets.remove();
-            }
-
             template.innerHTML = `<p id="lasets" class="label-name-wrapper">
                  <label for="laname">${languageJson.sLabelSetName}:</label>
                  <input type="text" name="laname" id="laname">
                </p>`;
-            child = template.content.firstChild;
+            child = template.content.firstElementChild;
             if (child) {
               targetParent.after(child);
             }
             break;
+        // Replace an existing label set.
         case 'replacelabel':
-            const laname = document.getElementById('laname');
-            if (laname) {
-              laname.remove();
-            }
-
             template.innerHTML = `
               <p id="laname" class="label-name-wrapper">
-                <select name="laname" id="lasets">
+                <select name="laname">
                   <option value=""></option>
                 </select>
               </p>' 
             `;
-            child = template.content.firstChild;
+            // 
+            child = template.content.firstElementChild;
             if (child) {
               targetParent.after(child);
             }
-            $('#lasets option[value=""]').remove();
+            //$('#lasets option[value=""]').remove();
+            const select = document.querySelector('select[name="laname"]');
+            if (!select) {
+                alert('Found no <select>');
+                throw 'abort';
+            }
             $.getJSON(languageJson.lanameurl, (data) => {
               console.log('getJSON');
               $.each(data, (key, val) => {
                 if (typeof val === 'string') {
-                  $('#lasets').append(`<option value="${key}">${val}</option>`);
+                  $(select).append(`<option value="${key}">${val}</option>`);
                 } else {
                   throw 'val is not string';
                 }
@@ -1086,7 +1099,7 @@ LS.questionEditor = (function () {
             });
             break;
         default:
-            alert('Internal error: Unsupported id in target (setLabel)');
+            alert('Internal error: Unsupported id in target (saveAsLabelSetOptionClick)');
             throw 'abort';
     }
   }
@@ -1123,7 +1136,7 @@ LS.questionEditor = (function () {
    * @param {string} tableClassName 'subquestions-table' or 'answeroptions-table'
    * @return {void}
    */
-  async function saveLabelSetAjax(e /*: Event */, tableClassName /*: string */) {
+  function saveLabelSetAjax(e /*: Event */, tableClassName /*: string */) {
     console.log('saveLabelSetAjax');
     // todo: scale id is not defined
     const scaleId = 1;
@@ -1157,7 +1170,9 @@ LS.questionEditor = (function () {
       // Activated survey
       // TODO
       $('.answertable input[name^="code_"]').each(function () {
-        if ($(this).attr('name').substr(-1) === scaleId) codes.push($(this).attr('value'));
+        if ($(this).attr('name').substr(-1) === scaleId) {
+            codes.push($(this).attr('value'));
+        }
       });
     }
     console.log('codes', codes);
@@ -1175,6 +1190,7 @@ LS.questionEditor = (function () {
       });
     });
 
+    /*
     const token = $.ajaxSetup().data.YII_CSRF_TOKEN;
     const response = await fetch(
       languageJson.lasaveurl,
@@ -1186,7 +1202,6 @@ LS.questionEditor = (function () {
           'X-CSRFToken': token
         },
         // TODO: FormData here
-        /*
         body: JSON.stringify(
           {
             laname: $('input[name=laname]').val(),
@@ -1197,10 +1212,9 @@ LS.questionEditor = (function () {
             [languageJson.csrf.tokenName]: languageJson.csrf.token
           },
         ),
-        */
-        body: new URLSearchParams({
-          YII_CSRF_TOKEN: token
-        }).toString(),
+        //body: new URLSearchParams({
+          //YII_CSRF_TOKEN: token
+        //}).toString(),
         credentials: 'include'
       }
     );
@@ -1210,25 +1224,60 @@ LS.questionEditor = (function () {
       alert('Internal error: Could not POST request: ' + response.status + ', ' + response.statusText);
       throw 'abort';
     }
+    */
 
-   /*
-   $.post(
-      languageJson.lasaveurl,
-      {
-        laname:  $('input[name=laname]').val(),
-        lid:     lid,
-        code:    codes,
-        answers: answers,
+    // NB: "Save as new label set" uses <input>, update existing uses <select>.
+    let laname = $('input[name=laname]').val();
+    let url;
+    let labelSetId;
+    if (laname) {
+      url = languageJson.lasaveurl;
+    } else {
+      laname = $('select[name=laname]').text();
+      // TODO: Duplicated to lid?
+      labelSetId = $('select[name=laname]').val();
+      url = languageJson.laupdateurl;
+    }
+
+    $.ajax({
+      url,
+      method: 'POST',
+      data: {
+        laname,
+        lid,
+        answers,
+        labelSetId,
+        codes,
       },
-   ).always((result) => {
-     console.log('then');
-     console.log(result);
-     LS.LsGlobalNotifier.create(
-       result,
-       'well-lg bg-success text-center'
-     );
-   });
-   */
+      /**
+       * @param {any} data
+       * @return {void}
+       */
+      success(successMessage) {
+        LS.LsGlobalNotifier.create(
+          successMessage,
+          'well-lg bg-success text-center'
+        );
+      },
+      /**
+       * @param {any} data
+       * @return {void}
+       */
+      error(data) {
+        //console.log('data', data);
+        //console.log('textStatus', textStatus);
+        //console.log('jqXHR', jqXHR);
+        if (data.responseJSON) {
+          LS.LsGlobalNotifier.create(
+            data.responseJSON.message,
+            'well-lg bg-danger text-center'
+          );
+        } else {
+          alert('Internal eror from Ajax call');
+          throw 'abort';
+        }
+      }
+    });
 
      /*
    }).fail((xhr, textStatus, errorThrown) => {
@@ -1258,6 +1307,59 @@ LS.questionEditor = (function () {
      console.log(xhr);
    });;
    */
+  }
+
+    /**
+     *
+     * @param code {string}
+     * @returns {boolean}
+     */
+  function checkCodeUniqueness(code) {
+      let isValid = false;
+      console.log('Is Valid: ' + isValid.toString());
+      const checkQuestionCodeIsUniqueURL = languageJson.checkQuestionCodeIsUniqueURL;
+      let checkCodePromise = getCheckUniquenessPromise(checkQuestionCodeIsUniqueURL, code);
+      checkCodePromise.then((response) => {
+          console.log('Status: ' +  response.status);
+          console.log(response.statusText);
+          console.log(response.statusCode);
+           isValid = true;
+          console.log('Is Valid: ' + isValid.toString());
+      }).catch((error) => {
+          console.log('Status: ' +  error.status);
+          console.log(error);
+           isValid = false;
+          console.log('Is Valid: ' + isValid.toString());
+      });
+
+      return isValid;
+  }
+
+    /**
+     * @param {string} url,
+     * @param {string} code
+     * @returns {Promise}
+     */
+  function getCheckUniquenessPromise(url, code) {
+    console.log('URL: ' + url);
+    return new Promise((resolve, reject) => {
+      $.ajax({
+        url: url,
+        method: 'GET',
+        data: { code: code },
+        dataType: 'json',
+        success: (data) => {
+          resolve(data);
+          console.log('Success');
+          console.log(data);
+        },
+        error: (data) => {
+          reject(data);
+          console.log('Error');
+          console.log(data);
+        }
+      });
+    });
   }
 
   /**
@@ -1381,7 +1483,7 @@ LS.questionEditor = (function () {
 
     $('#labelsets').click(showLabelSetPreview);
     $('.bthsaveaslabel').click(getLabel);
-    $('input[name=savelabeloption]:radio').click(setLabel);
+    $('input[name=savelabeloption]:radio').click(saveAsLabelSetOptionClick);
     updateRowProperties();
 
     bindExpandRelevanceEquation();
@@ -1401,6 +1503,32 @@ LS.questionEditor = (function () {
     // Hide help tips by default.
     $('.question-option-help').hide();
 
+    /*****************************************/
+    // Check Question Code is unique.
+    /*
+    $('#questionCode').focusout(() => {
+        let code = $('#questionCode').val();
+        if (code !== undefined || code !== '') {
+            console.log('Question Code: ' + code);
+            let isValid = checkCodeUniqueness(code);
+        //     if (!isValid) {
+        //         console.log('Error Code is not unqiue.');
+        //     }
+        //     console.log('IsValid: ' + isValid);
+        } else {
+            console.log('Question Code is empty');
+        }
+    });
+    */
+
+    // Check Answer Code is unique.
+     $('#answerCode').focusout( () => {
+        // Answer code
+     });
+
+     // Check Sub Question Code is unique.
+    /*****************************************/
+
     // Hide all language except the selected one.
     $('.lang-switch-button').on('click', function langSwitchOnClick() {
       const lang = $(this).data('lang');
@@ -1418,7 +1546,7 @@ LS.questionEditor = (function () {
 
     // Land on summary page if qid != 0 (not new question).
     const qidInput = document.querySelector('input[name="question[qid]"]');
-    if (qidInput == null) {
+    if (qidInput === null) {
       alert('Internal error: Could not find qidInput');
       throw 'abort';
     }
@@ -1441,7 +1569,7 @@ LS.questionEditor = (function () {
   return {
     /**
      * Update question attributes (general and advanced settings) when selecting question type.
-     * Used by question selector modal, so not wrapped in closure.
+     * Used by question selector modal.
      *
      * @param {string} questionType - One-letter string of question type
      * @param {string} generalSettingsUrl - URL to controller to fetch new HTML
@@ -1561,6 +1689,69 @@ LS.questionEditor = (function () {
         onClickSaveLabelSet(event, tableClassName);
       };
       $('#saveaslabelModal').modal('show');
+    },
+
+    /**
+     * Check with Ajax if question code (title) is unique.
+     *
+     * @param {string} code
+     * @param {number} qid Question id (0 when creating new question)
+     * @return {void}
+     */
+    checkQuestionCodeUniqueness: function(code, qid) {
+      $('#question-code-unique-warning').addClass('hidden');
+      $.ajax({
+        url: languageJson.checkQuestionCodeIsUniqueURL,
+        method: 'GET',
+        data: {
+          qid,
+          code
+        },
+        success: (data) => {
+          if (data !== 'true') {
+            $('#question-code-unique-warning').removeClass('hidden');
+          }
+        },
+        error: (data) => {
+          alert('Internal error: ' + data);
+          throw 'abort';
+        }
+      });
+    },
+
+    /**
+     * @param {string} code
+     * @param {string} sqid Subquestion id (newXXXX when creating new subquestion)
+     * @return {void}
+     */
+    checkSubquestionCodeUniqueness: function(code, sqid) {
+      // TODO: Hide error message.
+      console.log('code', code);
+      console.log('sqid', sqid);
+      $.ajax({
+        url: languageJson.checkSubquestionCodeIsUniqueURL,
+        method: 'GET',
+        data: {
+          sqid,
+          code,
+          // NB: sid is defined at top of module.
+          sid
+        },
+        statusCode: {
+          '403': () => {
+            alert('nooo');
+          }
+        },
+        success: (data) => {
+          if (data !== 'true') {
+            // TODO: Show error message
+          }
+        },
+        error: (data) => {
+          alert('Internal error: ' + JSON.stringify(data));
+          throw 'abort';
+        }
+      });
     }
   };
 })();
