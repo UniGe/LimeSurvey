@@ -367,28 +367,32 @@ class QuestionAdministrationController extends LSBaseController
                 $question->deleteAllAnswers();
                 $question->deleteAllSubquestions();
                 // If question type has subquestions, save them.
-                if ($question->questionType->subquestions === 1) {
+                if (($questionMetaData['settings'])->subquestions == 1) {
                     $this->storeSubquestions(
                         $question,
                         $request->getPost('subquestions')
                     );
                 }
                 // If question type has answeroptions, save them.
-                if ($question->questionType->answerscales > 0) {
+                if (($questionMetaData['settings'])->answerscales > 0) {
                     $this->storeAnswerOptions(
                         $question,
                         $request->getPost('answeroptions')
                     );
                 }
+                // if question typ has defaultvalue, save it
+                if ($hasdefaultvalues==1) {
+                    $this->updateDefaultValues($iSurveyId, $question->qid, $questionMetaData);
+                }
+
+                //create "new" default answers if there some, the qid they belong to is the same order
+                //as the subquestions have itself
             } else {
                 // TODO: Update subquestions.
                 // TODO: Update answer options.
+                // TODO: Update default value ?
             }
 
-            //save default answer values
-            if ($question->qid !== null && $question->qid !== 0 && $hasdefaultvalues==1) {
-                $this->updateDefaultValues($iSurveyId, $question->qid);
-            }
             $transaction->commit();
 
             // All done, redirect to edit form.
@@ -637,13 +641,15 @@ class QuestionAdministrationController extends LSBaseController
      * update/save default values
      *
      * @param integer $iSurveyID
+     * @param integer $questionId
+     * @param stdClass $questionMetaData this comes from QuestionTheme::findQuestionMetaData($question->type)
      * @return void (redirect)
      */
-    private function updateDefaultValues($iSurveyID, $questionId)
+    private function updateDefaultValues($iSurveyID, $questionId, $questionMetaData)
     {
         $oSurvey = Survey::model()->findByPk($iSurveyID);
         $aSurveyLanguages = $oSurvey->allLanguages;
-        $sBaseLanguage = $oSurvey->language;
+        //$sBaseLanguage = $oSurvey->language;
 
         Question::model()->updateAll(array('same_default'=> Yii::app()->request->getPost('samedefault') ? 1 : 0),
             'sid=:sid ANd qid=:qid', array(':sid'=>$iSurveyID, ':qid'=>$questionId));
@@ -651,9 +657,9 @@ class QuestionAdministrationController extends LSBaseController
         $arQuestion = Question::model()->findByAttributes(array('qid'=>$questionId));
         $sQuestionType = $arQuestion['type'];
 
-        $aQuestionTypeList = Question::typeList();
-        if ($aQuestionTypeList[$sQuestionType]['answerscales'] > 0 && $aQuestionTypeList[$sQuestionType]['subquestions'] == 0) {
-            for ($iScaleID = 0; $iScaleID < $aQuestionTypeList[$sQuestionType]['answerscales']; $iScaleID++) {
+        //$aQuestionTypeList = Question::typeList();
+        if ((int)($questionMetaData['settings'])->answerscales > 0 && ($questionMetaData['settings'])->subquestions == 0) {
+            for ($iScaleID = 0; $iScaleID < (int)($questionMetaData['settings'])->answerscales; $iScaleID++) {
                 foreach ($aSurveyLanguages as $sLanguage) {
                     if (!is_null(Yii::app()->request->getPost('defaultanswerscale_'.$iScaleID.'_'.$sLanguage))) {
                         $this->_updateDefaultValues($questionId, 0, $iScaleID, '', $sLanguage,
@@ -666,7 +672,7 @@ class QuestionAdministrationController extends LSBaseController
                 }
             }
         }
-        if ($aQuestionTypeList[$sQuestionType]['subquestions'] > 0) {
+        if ((int)($questionMetaData['settings'])->subquestions > 0) {
             foreach ($aSurveyLanguages as $sLanguage) {
                 $arQuestions = Question::model()->with('questionl10ns',
                     array('condition' => 'language = ' . $sLanguage))->findAllByAttributes(array(
@@ -676,7 +682,7 @@ class QuestionAdministrationController extends LSBaseController
                         'scale_id'=>0
                 ));
 
-                for ($iScaleID = 0; $iScaleID < $aQuestionTypeList[$sQuestionType]['subquestions']; $iScaleID++) {
+                for ($iScaleID = 0; $iScaleID < (int)($questionMetaData['settings'])->subquestions; $iScaleID++) {
                     foreach ($arQuestions as $aSubquestionrow) {
                         $namePostParam = 'defaultanswerscale_'.$iScaleID.'_'.$sLanguage.'_'.$aSubquestionrow['qid'];
                         $postParamLanguage = Yii::app()->request->getPost($namePostParam);
@@ -692,7 +698,7 @@ class QuestionAdministrationController extends LSBaseController
                 }
             }
         }
-        if ($aQuestionTypeList[$sQuestionType]['answerscales'] == 0 && $aQuestionTypeList[$sQuestionType]['subquestions'] == 0) {
+        if (($questionMetaData['settings'])->answerscales == 0 && ($questionMetaData['settings'])->subquestions == 0) {
             foreach ($aSurveyLanguages as $sLanguage) {
                 // Qick and dirty insert for yes/no defaul value
                 // write the the selectbox option, or if "EM" is slected, this value to table
@@ -734,19 +740,12 @@ class QuestionAdministrationController extends LSBaseController
         }
         //This is SUPER important! Recalculating the ExpressionScript Engine state!
         LimeExpressionManager::SetDirtyFlag();
-
-        /*
-        if (Yii::app()->request->getPost('close-after-save') === 'true') {
-            $this->getController()->redirect(array('questionAdministration/view/surveyid/'.$iSurveyID.'/gid/'.$this->iQuestionGroupID.'/qid/'.$this->iQuestionID));
-        }
-        $this->getController()->redirect(['questionAdministration/editdefaultvalues/surveyid/'.$iSurveyID.'/gid/'.$this->iQuestionGroupID.'/qid/'.$this->iQuestionID]);
-        */
     }
 
 
     /**
-     * This is a convenience function to update/delete answer default values. If the given
-     * $defaultvalue is empty then the entry is removed from table defaultvalues
+     * Insert, update or deletes a default value and it languages
+     * If the given $defaultvalue is empty then the entry is removed from table defaultvalues
      *
      * @param integer $qid   Question ID
      * @param integer $scale_id  Scale ID
@@ -778,22 +777,29 @@ class QuestionAdministrationController extends LSBaseController
                 }
             }
         } else {
-            if (is_null($dvid)) {
+            if (is_null($dvid)) { //then the default answer does not exist, create/insert it
                 $data = array('qid'=>$qid, 'sqid'=>$sqid, 'scale_id'=>$scale_id, 'specialtype'=>$specialtype);
                 $oDefaultvalue = new DefaultValue();
                 $oDefaultvalue->attributes = $data;
                 $oDefaultvalue->specialtype = $specialtype;
                 $oDefaultvalue->save();
-                if (!empty($oDefaultvalue->dvid)){
-                    $dataL10n = array('dvid'=>$oDefaultvalue->dvid, 'language'=>$language, 'defaultvalue'=>$defaultvalue);
+                if (!empty($oDefaultvalue->dvid)) {
+                    $dataL10n = array(
+                        'dvid'=>$oDefaultvalue->dvid,
+                        'language'=>$language,
+                        'defaultvalue'=>$defaultvalue
+                    );
                     $oDefaultvalueL10n = new DefaultValueL10n();
                     $oDefaultvalueL10n->attributes = $dataL10n;
                     $oDefaultvalueL10n->save();
                 }
             } else {
-                if ($dvid !== null){
+                if ($dvid !== null) {
                     $arDefaultValue->with('defaultvaluel10ns');
-                    $idL10n = !empty($arDefaultValue->defaultvaluel10ns) && array_key_exists($language, $arDefaultValue->defaultvaluel10ns) ? $arDefaultValue->defaultvaluel10ns[$language]->id : null;
+                    $idL10n = !empty($arDefaultValue->defaultvaluel10ns) && array_key_exists(
+                        $language,
+                        $arDefaultValue->defaultvaluel10ns
+                    ) ? $arDefaultValue->defaultvaluel10ns[$language]->id : null;
                     if ($idL10n !== null){
                         DefaultValueL10n::model()->updateAll(array('defaultvalue'=>$defaultvalue), 'dvid = ' . $dvid . ' AND language = \'' . $language . '\'');
                     } else {

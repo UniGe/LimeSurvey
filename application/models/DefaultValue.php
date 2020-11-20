@@ -97,4 +97,23 @@ class DefaultValue extends LSActiveRecord
         $oDefaultValue = $this->with('defaultvaluel10ns')->find('language = :language', array(':language' => $language));
         return $oDefaultValue->defaultvaluel10ns[$language]->defaultvalue;
     }*/
+
+    /**
+     * Deletes the default value and all languages belonging to this default value.
+     *
+     * @param int $questionId
+     *
+     * @throws Exception
+     * @return void
+     */
+    public static function deleteDefaultValue($questionId)
+    {
+        $defaultValues= DefaultValue::model()->findAllByAttributes(['qid' => $questionId]);
+        foreach ($defaultValues as $defaultValue) {
+            foreach ($defaultValue->defaultvalueL10ns as $defaultValueL10n) {
+                $defaultValueL10n->delete();
+            }
+            $defaultValue->delete();
+        }
+    }
 }

@@ -19,7 +19,6 @@ $langopts = QuestionAdministrationController::getDefaultValues($oSurvey->sid, $q
         </h3>
         <div class="row">
             <div class="col-lg-8 content-right">
-                <?php // echo CHtml::form(["admin/database/index"], 'post', ['class' => '', 'id' => 'frmdefaultvalues', 'name' => 'frmdefaultvalues']); ?>
                 <ul class="nav nav-tabs">
                     <?php foreach ($oSurvey->allLanguages as $i => $language) : ?>
                         <li role="presentation" <?php echo $i == 0 ? 'class="active"' : ''; ?>>
@@ -113,19 +112,20 @@ $langopts = QuestionAdministrationController::getDefaultValues($oSurvey->sid, $q
                                         <?php endforeach; ?>
                                     <?php endif; ?>
 
-                                    <?php if ($inputStyle == 'text') : ?>
-                                        <?php foreach ($opts['sqresult'] as $aSubquestion) : ?>
+                                    <?php if ($inputStyle == 'text') { ?>
+                                        <?php foreach ($opts['sqresult'] as $aSubquestion) { ?>
                                             <div class="form-group">
                                                 <label class="col-sm-12 control-label" for='defaultanswerscale_<?php echo "{$scale_id}_{$language}_{$aSubquestion['qid']}" ?>'>
                                                     <?php echo "{$aSubquestion['title']}: " . flattenText($aSubquestion['question']) ?>
                                                 </label>
                                                 <div class="col-sm-12">
                                                         <textarea cols='50' name='defaultanswerscale_<?php echo "{$scale_id}_{$language}_{$aSubquestion['qid']}" ?>'
-                                                                  id='defaultanswerscale_<?php echo "{$scale_id}_{$language}_{$aSubquestion['qid']}" ?>'><?php echo $aSubquestion['defaultvalue'] ?></textarea>
+                                                                  id='defaultanswerscale_<?php echo "{$scale_id}_{$language}_{$aSubquestion['qid']}" ?>'><?php
+                                                            echo $aSubquestion['defaultvalue']; ?></textarea>
                                                 </div>
                                             </div>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
+                                        <?php } ?>
+                                    <?php } ?>
                                 <?php endfor; ?>
                             <?php endif; ?>
                             <?php if ((int)$questionMetaDataSettings->answerscales == 0 && (int)$questionMetaDataSettings->subquestions == 0) : ?>
@@ -178,12 +178,6 @@ $langopts = QuestionAdministrationController::getDefaultValues($oSurvey->sid, $q
                         </div>
                     <?php endforeach; ?>
                 </div>
-                <input type='hidden' id='action' name='action' value='updatedefaultvalues'/>
-                <input type='hidden' id='sid' name='sid' value='<?php echo $question->sid ?>'/>
-                <input type='hidden' id='gid' name='gid' value='<?php echo $question->gid ?>'/>
-                <input type='hidden' id='qid' name='qid' value='<?php echo $question->qid ?>'/>
-                <p><input class="hidden" type='submit' value='<?php eT('Save') ?>'/></p>
-                <?php echo CHtml::endForm(); ?>
             </div>
         </div>
     </div>

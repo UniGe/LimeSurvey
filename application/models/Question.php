@@ -471,7 +471,8 @@ class Question extends LSActiveRecord
     }
 
     /**
-     * Delete all subquestions that belong to this question.
+     * Delete all subquestions that belong to this question and deletes all default values that
+     * belong to the subquestions.
      *
      * @return void
      * @todo Duplication from delete()
