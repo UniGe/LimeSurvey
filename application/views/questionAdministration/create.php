@@ -100,7 +100,7 @@ $this->renderPartial(
                     <!-- Question code and question type selector -->
                     <div class="row">
                         <?php
-                        $questionTheme = QuestionTheme::findQuestionMetaData($question->type);
+                        $questionTheme = QuestionTheme::findQuestionMetaData($question->type, $questionTemplate);
                         $this->renderPartial(
                             "codeAndType",
                             [
